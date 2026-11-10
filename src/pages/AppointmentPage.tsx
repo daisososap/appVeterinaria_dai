@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { AppointmentCard } from "../components/AppointmentCard";
 import { StatCard } from "../components/StatCard";
-//import { citasIniciales } from "../data/citas";
 import {
-  actualizarEstado, obtenerCitas,
+  actualizarEstado, obtenerCitas, crearCita,
 } from "../services/citasApi";
 
 import type { Cita, EstadoCita } from "../types";
@@ -14,6 +13,16 @@ export function AppointmentsPage() {
   const [citas, setCitas] = useState<Cita[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [filtro, setFiltro] = useState<Filtro>("todas");
+
+  // Estados para controlar la visibilidad del formulario y los campos de la nueva cita
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [nuevaMascota, setNuevaMascota] = useState("");
+  const [nuevoCliente, setNuevoCliente] = useState("");
+  const [nuevoServicio, setNuevoServicio] = useState("");
+  const [nuevaFecha, setNuevaFecha] = useState("");
+  const [nuevaHora, setNuevaHora] = useState("");
 
   useEffect(() => {
     async function cargarCitas() {
@@ -41,8 +50,36 @@ export function AppointmentsPage() {
     }
   }
 
-  const [filtro, setFiltro] = useState<Filtro>("todas");
-  const [mensaje, setMensaje] = useState("");
+  // Función para manejar el envío del formulario al endpoint POST
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      setError("");
+      const citaCreada = await crearCita({
+        mascota: nuevaMascota,
+        cliente: nuevoCliente,
+        servicio: nuevoServicio,
+        fecha: nuevaFecha,
+        hora: nuevaHora,
+        estado: "solicitada",
+      } as Omit<Cita, "id">);
+
+      setCitas((actuales) => [...actuales, citaCreada]);
+      setMensaje("¡Cita registrada correctamente!");
+      
+      // Limpiar formulario y cerrarlo
+      setNuevaMascota("");
+      setNuevoCliente("");
+      setNuevoServicio("");
+      setNuevaFecha("");
+      setNuevaHora("");
+      setMostrarFormulario(false);
+
+      setTimeout(() => setMensaje(""), 4000);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Error al registrar la cita.");
+    }
+  }
 
   const citasFiltradas =
     filtro === "todas" ? citas : citas.filter((cita) => cita.estado === filtro);
@@ -50,7 +87,6 @@ export function AppointmentsPage() {
   const pendientes = citas.filter((c) => c.estado === "solicitada").length;
   const confirmadas = citas.filter((c) => c.estado === "confirmada").length;
 
- 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <section className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -60,10 +96,88 @@ export function AppointmentsPage() {
             Consulta y administra las citas del día.
           </p>
         </div>
-        <button className="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white hover:bg-teal-800">
-          + Nueva cita
+        {/* Botón para alternar la visibilidad del formulario */}
+        <button 
+          onClick={() => setMostrarFormulario(!mostrarFormulario)}
+          className="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white hover:bg-teal-800"
+        >
+          {mostrarFormulario ? "Cancelar" : "+ Nueva cita"}
         </button>
       </section>
+
+      {/* Formulario desplegable para registrar nueva cita */}
+      {mostrarFormulario && (
+        <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 rounded-2xl bg-white p-6 shadow-md border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <h3 className="text-xl font-bold text-slate-800 sm:col-span-2">Registrar Nueva Cita</h3>
+          
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Mascota</label>
+            <input 
+              type="text" 
+              required 
+              value={nuevaMascota} 
+              onChange={(e) => setNuevaMascota(e.target.value)}
+              placeholder="Ej. Max" 
+              className="w-full rounded-xl border border-slate-300 px-4 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Cliente / Dueño</label>
+            <input 
+              type="text" 
+              required 
+              value={nuevoCliente} 
+              onChange={(e) => setNuevoCliente(e.target.value)}
+              placeholder="Ej. Ana López" 
+              className="w-full rounded-xl border border-slate-300 px-4 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Servicio</label>
+            <input 
+              type="text" 
+              required 
+              value={nuevoServicio} 
+              onChange={(e) => setNuevoServicio(e.target.value)}
+              placeholder="Ej. Vacunación" 
+              className="w-full rounded-xl border border-slate-300 px-4 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Fecha</label>
+            <input 
+              type="date" 
+              required 
+              value={nuevaFecha} 
+              onChange={(e) => setNuevaFecha(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-4 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Hora</label>
+            <input 
+              type="time" 
+              required 
+              value={nuevaHora} 
+              onChange={(e) => setNuevaHora(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 px-4 py-2"
+            />
+          </div>
+
+          <div className="sm:col-span-2 flex justify-end gap-3 mt-2">
+            <button 
+              type="submit"
+              className="rounded-xl bg-teal-700 px-6 py-2.5 font-semibold text-white hover:bg-teal-800"
+            >
+              Guardar Cita
+            </button>
+          </div>
+        </form>
+      )}
 
       <section className="mt-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
@@ -82,6 +196,12 @@ export function AppointmentsPage() {
           color="text-green-600"
         />
       </section>
+
+      {error && (
+        <p className="mt-6 rounded-xl bg-red-100 px-4 py-3 text-red-800">
+          {error}
+        </p>
+      )}
 
       <section className="mt-8">
         <label

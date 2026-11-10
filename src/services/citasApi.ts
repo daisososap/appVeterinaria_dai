@@ -8,6 +8,18 @@ export async function obtenerCitas(): Promise<Cita[]> {
   return respuesta.json();
 }
 
+export async function crearCita(datos: Omit<Cita, "id">): Promise<Cita> {
+  const respuesta = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(datos),
+  });
+
+  const resultado = await respuesta.json();
+  if (!respuesta.ok) throw new Error(resultado.mensaje || "Error al registrar la cita.");
+  return resultado.cita;
+}
+
 export async function actualizarEstado(
   id: number, estado: EstadoCita,
 ): Promise<Cita> {
