@@ -53,8 +53,9 @@ export function AppointmentsPage() {
   // Función para manejar el envío del formulario al endpoint POST
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
+
     try {
-      setError("");
       const citaCreada = await crearCita({
         mascota: nuevaMascota,
         cliente: nuevoCliente,
@@ -66,7 +67,7 @@ export function AppointmentsPage() {
 
       setCitas((actuales) => [...actuales, citaCreada]);
       setMensaje("¡Cita registrada correctamente!");
-      
+
       // Limpiar formulario y cerrarlo
       setNuevaMascota("");
       setNuevoCliente("");
@@ -97,8 +98,12 @@ export function AppointmentsPage() {
           </p>
         </div>
         {/* Botón para alternar la visibilidad del formulario */}
-        <button 
-          onClick={() => setMostrarFormulario(!mostrarFormulario)}
+        <button
+          type="button"
+          onClick={() => {
+            setError("");
+            setMostrarFormulario(!mostrarFormulario);
+          }}
           className="rounded-xl bg-teal-700 px-5 py-3 font-semibold text-white hover:bg-teal-800"
         >
           {mostrarFormulario ? "Cancelar" : "+ Nueva cita"}
@@ -109,49 +114,49 @@ export function AppointmentsPage() {
       {mostrarFormulario && (
         <form onSubmit={(e) => void handleSubmit(e)} className="mt-6 rounded-2xl bg-white p-6 shadow-md border border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
           <h3 className="text-xl font-bold text-slate-800 sm:col-span-2">Registrar Nueva Cita</h3>
-          
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Mascota</label>
-            <input 
-              type="text" 
-              required 
-              value={nuevaMascota} 
+            <input
+              type="text"
+              required
+              value={nuevaMascota}
               onChange={(e) => setNuevaMascota(e.target.value)}
-              placeholder="Ej. Max" 
+              placeholder="Ej. Max"
               className="w-full rounded-xl border border-slate-300 px-4 py-2"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Cliente / Dueño</label>
-            <input 
-              type="text" 
-              required 
-              value={nuevoCliente} 
+            <input
+              type="text"
+              required
+              value={nuevoCliente}
               onChange={(e) => setNuevoCliente(e.target.value)}
-              placeholder="Ej. Ana López" 
+              placeholder="Ej. Ana López"
               className="w-full rounded-xl border border-slate-300 px-4 py-2"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Servicio</label>
-            <input 
-              type="text" 
-              required 
-              value={nuevoServicio} 
+            <input
+              type="text"
+              required
+              value={nuevoServicio}
               onChange={(e) => setNuevoServicio(e.target.value)}
-              placeholder="Ej. Vacunación" 
+              placeholder="Ej. Vacunación"
               className="w-full rounded-xl border border-slate-300 px-4 py-2"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Fecha</label>
-            <input 
-              type="date" 
-              required 
-              value={nuevaFecha} 
+            <input
+              type="date"
+              required
+              value={nuevaFecha}
               onChange={(e) => setNuevaFecha(e.target.value)}
               className="w-full rounded-xl border border-slate-300 px-4 py-2"
             />
@@ -159,17 +164,23 @@ export function AppointmentsPage() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Hora</label>
-            <input 
-              type="time" 
-              required 
-              value={nuevaHora} 
+            <input
+              type="time"
+              required
+              value={nuevaHora}
               onChange={(e) => setNuevaHora(e.target.value)}
               className="w-full rounded-xl border border-slate-300 px-4 py-2"
             />
           </div>
 
+          {error && (
+            <p className="sm:col-span-2 rounded-xl bg-red-100 px-4 py-3 text-red-800">
+              {error}
+            </p>
+          )}
+
           <div className="sm:col-span-2 flex justify-end gap-3 mt-2">
-            <button 
+            <button
               type="submit"
               className="rounded-xl bg-teal-700 px-6 py-2.5 font-semibold text-white hover:bg-teal-800"
             >
@@ -197,7 +208,7 @@ export function AppointmentsPage() {
         />
       </section>
 
-      {error && (
+      {error && !mostrarFormulario && (
         <p className="mt-6 rounded-xl bg-red-100 px-4 py-3 text-red-800">
           {error}
         </p>
@@ -232,21 +243,27 @@ export function AppointmentsPage() {
         </p>
       )}
 
-      <section className="mt-6 grid gap-4">
-        {citasFiltradas.length > 0 ? (
-          citasFiltradas.map((cita) => (
-            <AppointmentCard
-              key={cita.id}
-              cita={cita}
-              onConfirmar={confirmarCita}
-            />
-          ))
-        ) : (
-          <p className="rounded-2xl bg-white p-8 text-center text-slate-500">
-            No se encontraron citas con ese estado.
-          </p>
-        )}
-      </section>
+      {cargando ? (
+        <p className="mt-6 rounded-2xl bg-white p-8 text-center text-slate-500">
+          Cargando citas...
+        </p>
+      ) : (
+        <section className="mt-6 grid gap-4">
+          {citasFiltradas.length > 0 ? (
+            citasFiltradas.map((cita) => (
+              <AppointmentCard
+                key={cita.id}
+                cita={cita}
+                onConfirmar={confirmarCita}
+              />
+            ))
+          ) : (
+            <p className="rounded-2xl bg-white p-8 text-center text-slate-500">
+              No se encontraron citas con ese estado.
+            </p>
+          )}
+        </section>
+      )}
     </main>
   );
 }

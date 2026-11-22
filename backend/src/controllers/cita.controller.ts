@@ -14,6 +14,7 @@ import {
 } from "../types/cita.js";
 
 import { AppError } from "../middlewares/error.middleware.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 function obtenerId(req: Request): number {
   const id = Number(req.params.id);
@@ -26,6 +27,37 @@ function obtenerId(req: Request): number {
 function esEstadoValido(valor: unknown): valor is EstadoCita {
   return typeof valor === "string" &&
     estadosPermitidos.includes(valor as EstadoCita);
+}
+
+function validarFechaNoPasada(fecha: string): void {
+  const partes = fecha.trim().split("-");
+  const anio = Number(partes[0]);
+  const mes = Number(partes[1]);
+  const dia = Number(partes[2]);
+
+  if (partes.length !== 3 || [anio, mes, dia].some(Number.isNaN)) {
+    throw new AppError(400, "La fecha de la cita no es válida.");
+  }
+
+  const fechaCita = new Date(anio, mes - 1, dia);
+  const fechaReal =
+    fechaCita.getFullYear() === anio &&
+    fechaCita.getMonth() === mes - 1 &&
+    fechaCita.getDate() === dia;
+
+  if (!fechaReal || Number.isNaN(fechaCita.getTime())) {
+    throw new AppError(400, "La fecha ingresada no existe en el calendario.");
+  }
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  if (fechaCita < hoy) {
+    throw new AppError(
+      400,
+      "No se pueden agendar citas en una fecha pasada al día actual.",
+    );
+  }
 }
 
 function validarCampos(datos: Partial<NuevaCita>): void {
@@ -42,31 +74,32 @@ function validarCampos(datos: Partial<NuevaCita>): void {
   }
 }
 
-export async function obtenerCitas(req: Request, res: Response): Promise<void> {
+export const obtenerCitas = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const estado = req.query.estado;
   if (estado !== undefined && !esEstadoValido(estado)) {
     throw new AppError(400, "El filtro de estado no es válido.");
   }
   res.json(await listarCitas(estado));
-}
+});
 
-export async function obtenerCita(req: Request, res: Response): Promise<void> {
+export const obtenerCita = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const cita = await buscarCitaPorId(obtenerId(req));
   if (!cita) throw new AppError(404, "La cita no fue encontrada.");
   res.json(cita);
-}
+});
 
-export async function registrarCita(req: Request, res: Response): Promise<void> {
+export const registrarCita = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const datos = req.body as Partial<NuevaCita>;
   validarCampos(datos);
+  validarFechaNoPasada(datos.fecha!);
   if (await horarioOcupado(datos.fecha!, datos.hora!)) {
     throw new AppError(409, "Ya existe una cita activa en ese horario.");
   }
   const cita = await crearCita(datos as NuevaCita);
   res.status(201).json({ mensaje: "Cita registrada correctamente.", cita });
-}
+});
 
-export async function modificarCita(req: Request, res: Response): Promise<void> {
+export const modificarCita = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const id = obtenerId(req);
   const datos = req.body as Partial<ActualizarCita>;
   validarCampos(datos);
@@ -79,9 +112,9 @@ export async function modificarCita(req: Request, res: Response): Promise<void> 
   const cita = await actualizarCita(id, datos as ActualizarCita);
   if (!cita) throw new AppError(404, "La cita no fue encontrada.");
   res.json({ mensaje: "Cita actualizada correctamente.", cita });
-}
+});
 
-export async function cambiarEstado(req: Request, res: Response): Promise<void> {
+export const cambiarEstado = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   const id = obtenerId(req);
   const estado: unknown = req.body.estado;
   if (!esEstadoValido(estado)) {
@@ -94,11 +127,11 @@ export async function cambiarEstado(req: Request, res: Response): Promise<void> 
   }
   const cita = await actualizarEstadoCita(id, estado);
   res.json({ mensaje: "Estado actualizado correctamente.", cita });
-}
+});
 
-export async function borrarCita(req: Request, res: Response): Promise<void> {
+export const borrarCita = asyncHandler(async (req: Request, res: Response): Promise<void> => {
   if (!await eliminarCita(obtenerId(req))) {
     throw new AppError(404, "La cita no fue encontrada.");
   }
   res.status(204).send();
-}
+});
